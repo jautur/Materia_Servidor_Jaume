@@ -1,4 +1,4 @@
-package com.example.gestor;
+package com.ejemplo.gestor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

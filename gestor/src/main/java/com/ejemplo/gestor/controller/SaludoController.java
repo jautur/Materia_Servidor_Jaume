@@ -1,4 +1,4 @@
-package com.example.gestor.controller;
+package com.ejemplo.gestor.controller;
 
 import java.time.LocalDate;
 
