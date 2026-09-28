@@ -1,6 +1,5 @@
 package com.ejemplo.gestor.controller;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -9,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -24,10 +24,22 @@ public class TareaController {
 
     private static int siguienteId = 0;
     private final List<Tarea> tareas = new ArrayList<>();
+    private int siguienteId = 1;
 
     @GetMapping
-    public List<Tarea> lista() {
-        return tareas;
+    public List<Tarea> lista(
+            @RequestParam(name = "completada", required = false) Boolean completada) {
+        if (completada == null) {
+            return tareas;
+        }
+
+        List<Tarea> resultado = new ArrayList<>();
+        for (Tarea tarea : tareas) {
+            if (tarea.isCompletada() == completada) {
+                resultado.add(tarea);
+            }
+        }
+        return resultado;
     }
 
     @GetMapping("/{id}")
