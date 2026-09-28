@@ -100,5 +100,4 @@ public class TareaController {
         return ResponseEntity.noContent().build();
     }
 
-    
 }
