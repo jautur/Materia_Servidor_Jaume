@@ -1,5 +1,6 @@
 package com.ejemplo.gestor.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.ejemplo.gestor.memoria.MemoriaProyecto;
+import com.ejemplo.gestor.model.Proyecto;
 import com.ejemplo.gestor.model.Tarea;
 
 import java.net.URI;
@@ -22,9 +25,14 @@ import java.util.List;
 @RequestMapping("/tareas")
 public class TareaController {
 
-    private static int siguienteId = 0;
-    private final List<Tarea> tareas = new ArrayList<>();
     private int siguienteId = 1;
+    private final List<Tarea> tareas;
+    private final List<Proyecto> proyectos;
+
+    public TareaController(MemoriaProyecto memoria) {
+        this.tareas = memoria.getTareas();
+        this.proyectos = memoria.getProyectos();
+    }
 
     @GetMapping
     public List<Tarea> lista(
@@ -64,6 +72,34 @@ public class TareaController {
                 .buildAndExpand(tarea.getId())
                 .toUri();
         return ResponseEntity.created(ubicacion).body(tarea);
+    }
+
+    @PostMapping(value = "/proyectos/{proyectoId}/tareas", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<Tarea> crearEnProyecto(
+            @PathVariable(name = "proyectoId") int proyectoId,
+            @RequestBody Tarea nueva) {
+
+        boolean existe = false;
+        for (Proyecto proyecto : proyectos) {
+            if (proyecto.getId() == proyectoId) {
+                existe = true;
+                break;
+            }
+        }
+        if (!existe) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 2. El servidor controla la identidad y la pertenencia
+        nueva.setId(siguienteId++);
+        nueva.setProyectoId(proyectoId);
+        tareas.add(nueva);
+
+        // 3. Dirección permanente del recurso recién creado
+        URI ubicacion = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/tareas/{id}").buildAndExpand(nueva.getId()).toUri();
+
+        return ResponseEntity.created(ubicacion).body(nueva);
     }
 
     @PutMapping("/{id}")
