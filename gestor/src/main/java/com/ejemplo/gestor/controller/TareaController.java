@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/tareas")
+@RequestMapping
 public class TareaController {
 
     private int siguienteId = 1;
@@ -34,7 +34,7 @@ public class TareaController {
         this.proyectos = memoria.getProyectos();
     }
 
-    @GetMapping
+    @GetMapping("/tareas")
     public List<Tarea> lista(
             @RequestParam(name = "completada", required = false) Boolean completada) {
         if (completada == null) {
@@ -50,7 +50,7 @@ public class TareaController {
         return resultado;
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/tareas/{id}")
     public ResponseEntity<Tarea> detalle(@PathVariable(name = "id") int id) {
         for (Tarea tarea : tareas) {
             if (tarea.getId() == id) {
@@ -60,7 +60,7 @@ public class TareaController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping(consumes = "application/json", produces = "application/json")
+    @PostMapping(value = "/tareas", consumes = "application/json", produces = "application/json")
     public ResponseEntity<Tarea> crear(@RequestBody Tarea tarea) {
         tarea.setId(siguienteId);
         siguienteId = siguienteId + 1;
@@ -102,7 +102,7 @@ public class TareaController {
         return ResponseEntity.created(ubicacion).body(nueva);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/tareas/{id}")
     public ResponseEntity<Tarea> sustituir(
             @PathVariable(name = "id") int id,
             @RequestBody Tarea datos) {
@@ -124,7 +124,7 @@ public class TareaController {
         return tarea;
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/tareas/{id}")
     public ResponseEntity<Tarea> modificar(
             @PathVariable(name = "id") int id,
             @RequestBody Tarea cambios) {
@@ -142,7 +142,7 @@ public class TareaController {
         return ResponseEntity.notFound().build();
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/tareas/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable(name = "id") int id) {
         tareas.removeIf(tarea -> tarea.getId() == id);
         return ResponseEntity.noContent().build();
