@@ -5,6 +5,14 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
+/**
+ * Model de domini intern per a Proyecto.
+ * 
+ * Responsabilitats:
+ * - Representa l'entitat interna de dades en el servidor.
+ * - Pot contindre camps de càlcul intern ('numeroIncidencias') o estructures de relació ('tareas')
+ *   que no s'exposen de manera directa a la representació externa.
+ */
 public class Proyecto {
     private int id;
     private String nombre;

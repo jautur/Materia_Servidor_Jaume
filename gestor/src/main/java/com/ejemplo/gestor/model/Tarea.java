@@ -2,6 +2,14 @@ package com.ejemplo.gestor.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
+/**
+ * Model de domini intern per a Tarea.
+ * 
+ * Responsabilitats:
+ * - Representa l'objecte tal com es gestiona en la memòria del servidor (o en BD en futures unitats).
+ * - És una classe Java tradicional i mutable (amb getters i setters).
+ * - No coneix l'existència dels DTOs ni de la capa web/REST (principi de desacoblament).
+ */
 public class Tarea {
 
     private int id;

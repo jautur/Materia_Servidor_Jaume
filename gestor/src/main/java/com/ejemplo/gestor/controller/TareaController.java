@@ -1,5 +1,9 @@
 package com.ejemplo.gestor.controller;
 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,14 +17,31 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.ejemplo.gestor.dto.TareaPatchRequest;
+import com.ejemplo.gestor.dto.TareaRequest;
+import com.ejemplo.gestor.dto.TareaResponse;
+import com.ejemplo.gestor.mapper.TareaMapper;
 import com.ejemplo.gestor.memoria.MemoriaProyecto;
 import com.ejemplo.gestor.model.Proyecto;
 import com.ejemplo.gestor.model.Tarea;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.validation.Valid;
 
+/**
+ * Controlador REST per a la gestió del recurs Tarea.
+ * 
+ * Responsabilitats:
+ * - Defineix les rutes i mètodes HTTP:
+ *     GET    /tareas                     -> Listat (filtrable per ?completada=true/false)
+ *     GET    /tareas/{id}                -> Detall de la tasca
+ *     POST   /tareas                     -> Creació general de tasca (valida amb @Valid)
+ *     POST   /proyectos/{id}/tareas      -> Creació de tasca vinculada a un projecte (la URL mana sobre el cos)
+ *     PUT    /tareas/{id}                -> Substitució completa de la tasca
+ *     PATCH  /tareas/{id}                -> Modificació parcial de camps
+ *     DELETE /tareas/{id}                -> Eliminació (204 No Content)
+ * - Utilitza DTOs (TareaRequest, TareaPatchRequest, TareaResponse) i TareaMapper.
+ * - Deixa la validació de format a Bean Validation (@Valid) abans d'executar els mètodes.
+ */
 @RestController
 @RequestMapping
 public class TareaController {
@@ -34,36 +55,40 @@ public class TareaController {
         this.proyectos = memoria.getProyectos();
     }
 
-    @GetMapping("/tareas")
-    public List<Tarea> lista(
-            @RequestParam(name = "completada", required = false) Boolean completada) {
-        if (completada == null) {
-            return tareas;
-        }
-
-        List<Tarea> resultado = new ArrayList<>();
+    private Tarea buscar(int id) {
         for (Tarea tarea : tareas) {
-            if (tarea.isCompletada() == completada) {
-                resultado.add(tarea);
+            if (tarea.getId() == id) {
+                return tarea;
+            }
+        }
+        return null;
+    }
+
+    @GetMapping("/tareas")
+    public List<TareaResponse> lista(
+            @RequestParam(name = "completada", required = false) Boolean completada) {
+        List<TareaResponse> resultado = new ArrayList<>();
+        for (Tarea tarea : tareas) {
+            if (completada == null || tarea.isCompletada() == completada) {
+                resultado.add(TareaMapper.aRespuesta(tarea));
             }
         }
         return resultado;
     }
 
     @GetMapping("/tareas/{id}")
-    public ResponseEntity<Tarea> detalle(@PathVariable(name = "id") int id) {
-        for (Tarea tarea : tareas) {
-            if (tarea.getId() == id) {
-                return ResponseEntity.ok(tarea);
-            }
+    public ResponseEntity<TareaResponse> detalle(@PathVariable(name = "id") int id) {
+        Tarea tarea = buscar(id);
+        if (tarea == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(TareaMapper.aRespuesta(tarea));
     }
 
     @PostMapping(value = "/tareas", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<Tarea> crear(@RequestBody Tarea tarea) {
-        tarea.setId(siguienteId);
-        siguienteId = siguienteId + 1;
+    public ResponseEntity<TareaResponse> crear(@Valid @RequestBody TareaRequest peticion) {
+        Tarea tarea = TareaMapper.aModelo(peticion);
+        tarea.setId(siguienteId++);
         tareas.add(tarea);
 
         URI ubicacion = ServletUriComponentsBuilder
@@ -71,13 +96,13 @@ public class TareaController {
                 .path("/{id}")
                 .buildAndExpand(tarea.getId())
                 .toUri();
-        return ResponseEntity.created(ubicacion).body(tarea);
+        return ResponseEntity.created(ubicacion).body(TareaMapper.aRespuesta(tarea));
     }
 
     @PostMapping(value = "/proyectos/{proyectoId}/tareas", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<Tarea> crearEnProyecto(
+    public ResponseEntity<TareaResponse> crearEnProyecto(
             @PathVariable(name = "proyectoId") int proyectoId,
-            @RequestBody Tarea nueva) {
+            @Valid @RequestBody TareaRequest peticion) {
 
         boolean existe = false;
         for (Proyecto proyecto : proyectos) {
@@ -90,56 +115,43 @@ public class TareaController {
             return ResponseEntity.notFound().build();
         }
 
-        // 2. El servidor controla la identidad y la pertenencia
+        Tarea nueva = TareaMapper.aModelo(peticion);
         nueva.setId(siguienteId++);
         nueva.setProyectoId(proyectoId);
         tareas.add(nueva);
 
-        // 3. Dirección permanente del recurso recién creado
         URI ubicacion = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/tareas/{id}").buildAndExpand(nueva.getId()).toUri();
 
-        return ResponseEntity.created(ubicacion).body(nueva);
+        return ResponseEntity.created(ubicacion).body(TareaMapper.aRespuesta(nueva));
     }
 
     @PutMapping("/tareas/{id}")
-    public ResponseEntity<Tarea> sustituir(
+    public ResponseEntity<TareaResponse> sustituir(
             @PathVariable(name = "id") int id,
-            @RequestBody Tarea datos) {
-        for (int i = 0; i < tareas.size(); i++) {
-            if (tareas.get(i).getId() == id) {
-                datos.setId(id);
-                tareas.set(i, datos);
-                return ResponseEntity.ok(datos);
-            }
+            @Valid @RequestBody TareaRequest datos) {
+        Tarea tarea = buscar(id);
+        if (tarea == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
-    }
-
-    @PostMapping("/espejo")
-    public Tarea espejo(@RequestBody Tarea tarea) {
-        System.out.println("He recibido: " + tarea.getTitulo()
-                + " / " + tarea.getPrioridad()
-                + " / completada=" + tarea.isCompletada());
-        return tarea;
+        tarea.setTitulo(datos.getTitulo());
+        tarea.setPrioridad(datos.getPrioridad());
+        if (datos.getProyectoId() != null) {
+            tarea.setProyectoId(datos.getProyectoId());
+        }
+        return ResponseEntity.ok(TareaMapper.aRespuesta(tarea));
     }
 
     @PatchMapping("/tareas/{id}")
-    public ResponseEntity<Tarea> modificar(
+    public ResponseEntity<TareaResponse> modificar(
             @PathVariable(name = "id") int id,
-            @RequestBody Tarea cambios) {
-        for (Tarea tarea : tareas) {
-            if (tarea.getId() == id) {
-                if (cambios.getTitulo() != null) {
-                    tarea.setTitulo(cambios.getTitulo());
-                }
-                if (cambios.getPrioridad() != null) {
-                    tarea.setPrioridad(cambios.getPrioridad());
-                }
-                return ResponseEntity.ok(tarea);
-            }
+            @Valid @RequestBody TareaPatchRequest cambios) {
+        Tarea tarea = buscar(id);
+        if (tarea == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        TareaMapper.aplicar(cambios, tarea);
+        return ResponseEntity.ok(TareaMapper.aRespuesta(tarea));
     }
 
     @DeleteMapping("/tareas/{id}")
@@ -147,5 +159,4 @@ public class TareaController {
         tareas.removeIf(tarea -> tarea.getId() == id);
         return ResponseEntity.noContent().build();
     }
-
 }
